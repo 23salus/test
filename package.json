@@ -1,0 +1,24 @@
+{
+  "name": "github-stars-scraper",
+  "version": "1.0.0",
+  "description": "Scraper to fetch GitHub stargazers and export to Google Sheets",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": [
+    "github",
+    "scraper",
+    "stargazers",
+    "google-sheets"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/rest": "^20.0.2",
+    "googleapis": "^128.0.0",
+    "dotenv": "^16.3.1"
+  }
+}

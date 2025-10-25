@@ -71,7 +71,7 @@ export class SheetsService {
         'Username',
         'Name',
         'Email',
-        'Company',
+        'Company (GitHub)',
         'Location',
         'Bio',
         'Blog/Website',
@@ -82,11 +82,18 @@ export class SheetsService {
         'Profile URL',
         'Avatar URL',
         'Account Created',
+        // Enriched data columns
+        'Role',
+        'Seniority',
+        'Company (Enriched)',
+        'LinkedIn Profiles (All)',
+        'Data Source',
+        'Confidence',
       ];
 
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
-        range: `${sheetName}!A1:N1`,
+        range: `${sheetName}!A1:T1`,
         valueInputOption: 'RAW',
         resource: {
           values: [headers],
@@ -124,6 +131,20 @@ export class SheetsService {
       console.error('Error preparing sheet:', error.message);
       throw error;
     }
+  }
+
+  /**
+   * Format LinkedIn profiles array as a string for Google Sheets
+   * @param {Array} profiles - Array of LinkedIn profile objects
+   * @returns {string} Formatted string
+   */
+  formatLinkedInProfiles(profiles) {
+    if (!profiles || profiles.length === 0) {
+      return '';
+    }
+
+    // Return all URLs separated by newlines (Google Sheets will show them in the cell)
+    return profiles.map(p => p.url).join('\n');
   }
 
   /**
@@ -168,6 +189,13 @@ export class SheetsService {
         user.profileUrl,
         user.avatarUrl,
         user.createdAt,
+        // Enriched data
+        user.role || '',
+        user.seniority || '',
+        user.enrichedCompany || '',
+        this.formatLinkedInProfiles(user.linkedinProfiles),
+        user.dataSource || '',
+        user.confidence || '',
       ]);
 
       // Write data in batches to avoid timeout
@@ -179,7 +207,7 @@ export class SheetsService {
 
         await this.sheets.spreadsheets.values.update({
           spreadsheetId: this.spreadsheetId,
-          range: `${sheetName}!A${startRow}:N${endRow}`,
+          range: `${sheetName}!A${startRow}:T${endRow}`,
           valueInputOption: 'RAW',
           resource: {
             values: batch,

@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { GitHubService } from './src/github-service.js';
 import { SheetsService } from './src/sheets-service.js';
+import { EnrichmentService } from './src/enrichment-service.js';
 
 // Load environment variables
 dotenv.config();
@@ -10,6 +11,11 @@ const REPO_URL = 'https://github.com/datapizza-labs/datapizza-ai';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID;
 const CREDENTIALS_PATH = process.env.GOOGLE_SERVICE_ACCOUNT_PATH || './credentials.json';
+
+// Optional: AI and Search API keys for enrichment
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+const GOOGLE_SEARCH_ENGINE_ID = process.env.GOOGLE_SEARCH_ENGINE_ID;
 
 /**
  * Parse GitHub repository URL to extract owner and repo name
@@ -59,6 +65,29 @@ async function main() {
 
     console.log(`\n✓ Successfully fetched ${stargazers.length} stargazers\n`);
 
+    // ENRICHMENT PHASE: Add role, seniority, company data
+    let enrichedStargazers = stargazers;
+
+    if (OPENAI_API_KEY || GOOGLE_API_KEY) {
+      console.log('\n🔍 Starting enrichment process...\n');
+
+      const enrichmentService = new EnrichmentService(
+        OPENAI_API_KEY,
+        GOOGLE_API_KEY,
+        GOOGLE_SEARCH_ENGINE_ID
+      );
+
+      try {
+        enrichedStargazers = await enrichmentService.enrichUsers(stargazers);
+      } catch (error) {
+        console.error('\n⚠️  Enrichment process stopped:', error.message);
+        console.log('Continuing with partial data...\n');
+      }
+    } else {
+      console.log('\n⏭️  Skipping enrichment (API keys not configured)');
+      console.log('To enable enrichment, add OPENAI_API_KEY and/or GOOGLE_API_KEY to .env\n');
+    }
+
     // Initialize Google Sheets service
     console.log('Initializing Google Sheets service...');
     const sheetsService = new SheetsService(CREDENTIALS_PATH, SPREADSHEET_ID);
@@ -66,7 +95,7 @@ async function main() {
 
     // Export to Google Sheets
     console.log('\nExporting data to Google Sheets...');
-    await sheetsService.exportStargazers(stargazers);
+    await sheetsService.exportStargazers(enrichedStargazers);
 
     console.log('\n===========================================');
     console.log('✓ Scraping completed successfully!');

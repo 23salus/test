@@ -2,25 +2,44 @@
 
 A powerful Node.js tool that fetches all stargazers from a GitHub repository, enriches their profiles with professional data (role, seniority, company), and exports everything to Google Sheets.
 
+## 🆕 Two-Phase Architecture
+
+This scraper uses a **two-phase workflow** for maximum flexibility and cost control:
+
+### Phase 1: Fetch (Fast & Free)
+- Downloads all GitHub data including social accounts from profile sidebars
+- **NEW**: Extracts LinkedIn, Twitter, and other social links directly from GitHub
+- Saves to Google Sheets and local cache
+- **Time**: 2-5 minutes for 500 users
+- **Cost**: $0 (completely free!)
+
+### Phase 2: Enrich (Optional, AI-Powered)
+- Reads cached data (no re-fetch needed)
+- Adds role, seniority, company via AI analysis
+- Searches LinkedIn for missing profiles
+- **Time**: 4-10 minutes for 500 users
+- **Cost**: ~$7-12 for 500 users
+
+**Workflow**: Fetch first → Review data → Decide if enrichment is worth it → Enrich if needed
+
 ## Features
 
-### Core Features
-- Fetches all stargazers from any public GitHub repository
-- Extracts detailed user information including:
-  - Username, name, and email
-  - Bio, company, and location
-  - Blog/website and Twitter handle
-  - Follower/following counts
-  - Number of public repositories
-  - Profile and avatar URLs
-  - Account creation date
-- Exports data to Google Sheets with formatted headers
-- Handles rate limiting automatically
-- Progress tracking during execution
+### Data Extracted from GitHub (Phase 1 - FREE)
+- Username, name, and email
+- Bio, company, and location
+- Blog/website URL
+- **Social accounts from profile sidebar**:
+  - LinkedIn URLs
+  - Twitter/X URLs
+  - Mastodon, YouTube, Facebook, Instagram, etc.
+- Follower/following counts
+- Number of public repositories
+- Profile and avatar URLs
+- Account creation date
 
-### 🆕 AI-Powered Enrichment (New!)
+### AI Enrichment (Phase 2 - Optional)
 
-The scraper now uses a **3-level cascade strategy** to enrich user data:
+The enrichment uses a **3-level cascade strategy**:
 
 #### **Level 1: Pattern Matching** (Free, Instant)
 - Analyzes GitHub bio, company, and profile data
@@ -35,19 +54,19 @@ The scraper now uses a **3-level cascade strategy** to enrich user data:
 - Fills gaps left by Level 1
 
 #### **Level 3: LinkedIn Search** (Requires Google Search API)
-- Searches LinkedIn for user profiles
+- Searches LinkedIn ONLY for users without LinkedIn in GitHub profile
 - Returns **ALL matching profiles** (not just the first one)
 - Extracts role and company from LinkedIn page titles
-- **Rate limiting**: 100 free queries/day, then prompts user to continue with paid tier
-- Interactive prompt asks: continue with paid queries, wait 24h, or skip
+- **Rate limiting**: 100 free queries/day, then prompts user to continue
+- Interactive prompt: continue with paid queries, wait 24h, or skip
 
 ## Prerequisites
 
 - Node.js 18 or higher
 - A GitHub account
 - A Google Cloud Platform account
-- **(Optional)** OpenAI API key for AI enrichment
-- **(Optional)** Google Custom Search API for LinkedIn search
+- **(Optional)** OpenAI API key for AI enrichment (Phase 2)
+- **(Optional)** Google Custom Search API for LinkedIn search (Phase 2)
 
 ## Setup Instructions
 
@@ -109,17 +128,38 @@ npm install
    - Uncheck "Notify people"
    - Click "Share"
 
-### 4. (Optional) Set Up AI Enrichment
+### 4. Configure Environment Variables
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit `.env` and add your credentials:
+   ```env
+   # Required for Phase 1 (fetch)
+   GITHUB_TOKEN=your_github_token_here
+   GOOGLE_SPREADSHEET_ID=your_spreadsheet_id_here
+   GOOGLE_SERVICE_ACCOUNT_PATH=./credentials.json
+
+   # Optional for Phase 2 (enrich)
+   OPENAI_API_KEY=sk-your_openai_key_here
+   GOOGLE_API_KEY=your_google_api_key_here
+   GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
+   ```
+
+### 5. (Optional) Set Up AI Enrichment APIs
+
+Only needed if you want to run Phase 2 (enrichment).
 
 #### Option A: OpenAI API for AI Analysis
 
 1. Go to [OpenAI API Keys](https://platform.openai.com/api-keys)
 2. Click "Create new secret key"
-3. Give it a name like "GitHub Scraper"
-4. Copy the API key (starts with `sk-...`)
-5. Add to your `.env` file (see step 5 below)
+3. Copy the API key (starts with `sk-...`)
+4. Add to your `.env` file
 
-**Cost**: ~$0.01-0.02 per user analyzed (very affordable!)
+**Cost**: ~$0.01-0.02 per user analyzed
 
 #### Option B: Google Custom Search API for LinkedIn Search
 
@@ -135,40 +175,11 @@ npm install
    - Copy the "Search engine ID"
 5. Add both to your `.env` file
 
-**Cost**:
-- Free: 100 searches/day
-- Paid: $5 per 1000 searches after free tier
-- The script will prompt you when you hit the limit!
-
-### 5. Configure Environment Variables
-
-1. Copy the example environment file:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Edit `.env` and fill in your values:
-   ```env
-   # Required
-   GITHUB_TOKEN=your_github_token_here
-   GOOGLE_SPREADSHEET_ID=your_spreadsheet_id_here
-   GOOGLE_SERVICE_ACCOUNT_PATH=./credentials.json
-
-   # Optional: For AI enrichment
-   OPENAI_API_KEY=sk-your_openai_key_here
-
-   # Optional: For LinkedIn search
-   GOOGLE_API_KEY=your_google_api_key_here
-   GOOGLE_SEARCH_ENGINE_ID=your_search_engine_id_here
-   ```
-
-**Note**: If you don't add the optional API keys, the scraper will still work but won't enrich data with role/seniority/company information.
+**Cost**: Free for first 100 searches/day, then $5 per 1000 searches
 
 ### 6. Customize Target Repository (Optional)
 
-By default, the scraper targets `https://github.com/datapizza-labs/datapizza-ai`.
-
-To change the target repository, edit `index.js` and modify the `REPO_URL` constant:
+Edit `index.js` and modify the `REPO_URL` constant:
 
 ```javascript
 const REPO_URL = 'https://github.com/your-username/your-repo';
@@ -176,182 +187,186 @@ const REPO_URL = 'https://github.com/your-username/your-repo';
 
 ## Usage
 
-### Interactive Mode (Recommended)
+### Two-Phase Workflow (Recommended)
 
-Run the scraper and choose whether to enrich data:
+#### Phase 1: Fetch GitHub Data
+
+```bash
+npm start
+# or
+npm run fetch
+```
+
+**What it does:**
+- Fetches all stargazers and their GitHub profile data
+- Extracts social accounts (LinkedIn, Twitter, etc.) from profile sidebars
+- Saves to Google Sheets
+- Saves to `.stargazers-cache.json` for Phase 2
+- Shows how many LinkedIn URLs were found
+
+**Output:**
+```
+✓ Successfully fetched 500 stargazers
+✓ Found 180 LinkedIn URLs directly from GitHub profiles!
+✓ Saved to Google Sheets
+✓ Saved to .stargazers-cache.json
+
+Next steps:
+  1. Check your Google Sheet to see the data
+  2. If you want AI enrichment, run: npm run enrich
+```
+
+#### Phase 2: Enrich Data (Optional)
+
+**Only run this if you want AI-powered enrichment and are willing to spend ~$7-12 for 500 users.**
+
+```bash
+npm run enrich
+```
+
+**What it does:**
+- Reads cached data from `.stargazers-cache.json`
+- Shows cost estimate and asks for confirmation
+- Runs 3-level enrichment:
+  - Level 1: Pattern matching (free)
+  - Level 2: AI analysis with OpenAI
+  - Level 3: LinkedIn search (only for users without LinkedIn in GitHub)
+- Updates Google Sheets with enriched data
+
+**Interactive prompt:**
+```
+============================================================
+ENRICHMENT CONFIGURATION
+============================================================
+Users with LinkedIn from GitHub: 180
+Users needing LinkedIn search: 320
+
+Estimated time: ~4 minutes
+Estimated cost: ~$7.50
+============================================================
+
+Start enrichment process? (y/n):
+```
+
+### Quick Start (GitHub Data Only)
+
+If you just want GitHub data without enrichment:
 
 ```bash
 npm start
 ```
 
-After fetching GitHub data, you'll see:
+That's it! Check your Google Sheet for all the data including LinkedIn URLs from profiles.
 
-```
-============================================================
-ENRICHMENT OPTIONS
-============================================================
-The enrichment process will add:
-  • Role (e.g., "Software Engineer", "Product Manager")
-  • Seniority (e.g., "Senior", "Staff", "Principal")
-  • Company (enriched from multiple sources)
-  • LinkedIn profiles (if not already in GitHub profile)
+### One-Shot Workflow (Fetch + Enrich Together)
 
-Available enrichment levels:
-  ✓ Level 1: Pattern matching (FREE)
-  ✓ Level 2: AI analysis via OpenAI (~$0.01-0.02 per user)
-  ✓ Level 3: LinkedIn search (100 free/day, then $5/1000)
+If you're sure you want enrichment:
 
-Estimated time: ~4 minutes for 450 users
-Estimated cost: ~$7.50
-============================================================
-
-Do you want to run the enrichment process? (y/n):
-```
-
-**Type `y`** to run enrichment, or **`n`** to skip and export only GitHub data.
-
-### Quick Commands
-
-**Skip enrichment (GitHub data only):**
 ```bash
-npm run start:no-enrich
-```
-Fast, free, no questions asked. Perfect for:
-- Quick previews of data
-- Testing the scraper
-- When you only need basic GitHub info
+# Phase 1: Fetch
+npm start
 
-**Auto-enrich (no prompt):**
-```bash
-npm run start:enrich
-```
-Runs enrichment automatically without asking. Perfect for:
-- Automation/CI pipelines
-- When you've already decided to enrich
-- Batch processing multiple repos
-
-### What Happens During Execution
-
-1. **GitHub Scraping**: Fetches all stargazers and their basic info (including social accounts from profiles!)
-2. **Enrichment Choice** (if API keys configured):
-   - Interactive prompt shows estimated time and cost
-   - Choose to run enrichment or skip
-3. **Enrichment Phase** (if enabled):
-   - Level 1: Instant pattern matching
-   - Level 2: AI analysis (shows progress per user)
-   - Level 3: LinkedIn search (asks for confirmation after 100 free queries)
-4. **Export**: Writes all data to Google Sheets
-
-### Example Output
-
-```
-===========================================
-GitHub Stars Scraper
-===========================================
-
-Target Repository: datapizza-labs/datapizza-ai
-
-Fetching stargazers and their details...
-Total stargazers found: 450
-
-🔍 Starting enrichment process...
-===========================================
-🚀 STARTING USER ENRICHMENT (3-LEVEL CASCADE)
-===========================================
-
-[1/450] ==================================================
-📊 Enriching: john_doe (John Doe)
-  [Level 1] Checking existing data...
-  [Level 2] Running AI analysis...
-  ✓ [Level 2] AI analysis complete (confidence: high)
-
-[2/450] ==================================================
-📊 Enriching: jane_smith (Jane Smith)
-  [Level 1] Checking existing data...
-  ✓ [Level 1] Complete data found from profile!
-
-...
-
-[101/450] ==================================================
-⚠️  FREE TIER LIMIT REACHED
-You've used 100 Google Search queries (free limit: 100/day)
-
-Options:
-1. Continue with PAID queries (~$5 per 1000 queries)
-2. Wait 24 hours for the free limit to reset
-3. Skip LinkedIn search for remaining users
-
-Enter your choice (1/2/3): 3
-
-⏭️  Skipping LinkedIn search for remaining users...
-
-📊 ENRICHMENT STATISTICS
-Total users processed: 450
-Level 1 success (pattern matching): 180
-Level 2 success (AI analysis): 220
-Level 3 success (LinkedIn search): 50
-Failed to enrich: 0
-
-Exporting data to Google Sheets...
-✓ Scraping completed successfully!
+# Phase 2: Enrich (when prompted, type 'y')
+npm run enrich
 ```
 
-## Output Format
+## What Data You Get
 
-The Google Sheet will contain these columns:
+### Phase 1 Output (FREE - GitHub Only)
 
-### Basic Information (from GitHub)
+The Google Sheet will have these columns:
+
+| Column | Description | Source |
+|--------|-------------|--------|
+| Username | GitHub username | GitHub API |
+| Name | Full name | GitHub API |
+| Email | Public email | GitHub API |
+| Company (GitHub) | Company from profile | GitHub API |
+| Location | Location | GitHub API |
+| Bio | Profile bio | GitHub API |
+| Blog/Website | Personal site | GitHub API |
+| Twitter Username | Twitter handle | GitHub API |
+| Followers | Follower count | GitHub API |
+| Following | Following count | GitHub API |
+| Public Repos | Repository count | GitHub API |
+| Profile URL | GitHub profile link | GitHub API |
+| Avatar URL | Profile picture | GitHub API |
+| Account Created | Creation date | GitHub API |
+| **LinkedIn URL (GitHub)** | LinkedIn from sidebar | GitHub API ⭐ |
+| **Twitter URL (GitHub)** | Twitter from sidebar | GitHub API ⭐ |
+| **Other Social (GitHub)** | Other social links | GitHub API ⭐ |
+
+**⭐ NEW**: These columns are extracted from the profile sidebar and often contain LinkedIn URLs!
+
+### Phase 2 Output (Enriched Data)
+
+Additional columns added by enrichment:
+
 | Column | Description |
 |--------|-------------|
-| Username | GitHub username |
-| Name | Full name |
-| Email | Public email address |
-| Company (GitHub) | Company from GitHub profile |
-| Location | Geographic location |
-| Bio | Profile bio |
-| Blog/Website | Personal website or blog |
-| Twitter | Twitter handle |
-| Followers | Number of followers |
-| Following | Number of users following |
-| Public Repos | Number of public repositories |
-| Profile URL | Link to GitHub profile |
-| Avatar URL | Profile picture URL |
-| Account Created | Account creation date |
+| **Role** | Job role (e.g., "Software Engineer") |
+| **Seniority** | Seniority level (e.g., "Senior", "Staff") |
+| **Company (Enriched)** | Current company from AI/LinkedIn |
+| **LinkedIn Profiles (Search)** | LinkedIn profiles from Google Search |
+| **Data Source** | How data was obtained |
+| **Confidence** | Confidence level (high/medium/low) |
 
-### 🆕 Enriched Data (from AI analysis)
-| Column | Description |
-|--------|-------------|
-| **Role** | Job role (e.g., "Software Engineer", "Product Manager") |
-| **Seniority** | Seniority level (e.g., "Senior", "Staff", "Principal") |
-| **Company (Enriched)** | Current company from enrichment |
-| **LinkedIn Profiles (All)** | All matching LinkedIn URLs (one per line) |
-| **Data Source** | How data was obtained (e.g., "AI Analysis", "LinkedIn Search") |
-| **Confidence** | Confidence level: high/medium/low |
+## Cost Breakdown
 
-## Cost Estimation
+### Phase 1: Fetch (Always FREE)
+
+- GitHub API: Free (with token, 5000 requests/hour)
+- Google Sheets API: Free
+- **Total: $0**
+
+### Phase 2: Enrich (Optional)
 
 For 500 stargazers:
 
-- **GitHub API**: Free (with token)
-- **Google Sheets API**: Free
-- **Level 1 Enrichment**: Free (pattern matching)
-- **Level 2 Enrichment (OpenAI)**: ~$5-10 total
-- **Level 3 Enrichment (Google Search)**:
-  - First 100 users/day: Free
-  - Next 400 users: ~$2
+**Scenario A**: 180 already have LinkedIn in GitHub profile
+- OpenAI (500 users): ~$7.50
+- Google Search (320 users need search): ~$1.10
+- **Total: ~$8.60**
 
-**Total estimated cost**: $7-12 for 500 users (one-time)
+**Scenario B**: Few have LinkedIn in GitHub
+- OpenAI (500 users): ~$7.50
+- Google Search (400 users after 100 free): ~$1.50
+- **Total: ~$9.00**
 
-## Rate Limiting
+**Key Insight**: Phase 1 often finds 30-50% of LinkedIn URLs for FREE, significantly reducing Phase 2 costs!
 
-The scraper includes automatic rate limiting:
+## Examples
 
-- **GitHub API**: Small delays between requests
-- **OpenAI API**: 100ms delay between calls
-- **Google Search**:
-  - Tracks usage automatically
-  - Prompts user at 100 queries (free limit)
-  - User can choose to continue (paid), wait, or skip
+### Example 1: Quick Data Grab (FREE)
+
+```bash
+npm start
+```
+
+Get all GitHub data + social accounts in 2-3 minutes, $0.
+
+### Example 2: Full Analysis
+
+```bash
+# Day 1: Fetch data (free)
+npm start
+
+# Review Google Sheet, decide enrichment is worth it
+
+# Day 2: Run enrichment
+npm run enrich
+# Type 'y' when prompted
+```
+
+### Example 3: Check What You Have First
+
+```bash
+# Fetch data
+npm start
+
+# Check the "LinkedIn URL (GitHub)" column in your sheet
+# If 80% already have LinkedIn, maybe skip enrichment!
+```
 
 ## Troubleshooting
 
@@ -361,55 +376,85 @@ Make sure you've created a `.env` file and added your GitHub token.
 ### "GOOGLE_SPREADSHEET_ID is not set"
 Add your spreadsheet ID to the `.env` file.
 
+### "Cache file not found" (when running enrich)
+Run `npm start` first to fetch data from GitHub.
+
 ### "Error initializing Google Sheets API"
 Check that:
 - Your `credentials.json` file is in the project root
 - The file is valid JSON
 - You've shared the spreadsheet with the service account email
 
-### "Permission denied" when writing to sheets
-Make sure you've shared the spreadsheet with your service account email (found in `credentials.json` as `client_email`) with Editor permissions.
+### Not finding social accounts
+The scraper now makes 2 API calls per user:
+1. GET /users/{username} - basic info
+2. GET /users/{username}/social_accounts - social links
 
-### Enrichment not working
-- Check that you've added `OPENAI_API_KEY` to `.env`
-- Verify your OpenAI API key is valid and has credits
-- For Google Search, ensure both `GOOGLE_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID` are set
+If you're not seeing LinkedIn URLs, the users might not have them in their GitHub profiles.
 
 ## Project Structure
 
 ```
 github-stars-scraper/
 ├── src/
-│   ├── github-service.js        # GitHub API integration
-│   ├── sheets-service.js        # Google Sheets API integration
-│   ├── ai-service.js           # OpenAI integration for analysis
-│   ├── search-service.js       # Google Custom Search for LinkedIn
+│   ├── github-service.js        # GitHub API (basic + social accounts)
+│   ├── sheets-service.js        # Google Sheets integration
+│   ├── ai-service.js           # OpenAI integration
+│   ├── search-service.js       # Google Custom Search
 │   └── enrichment-service.js   # 3-level cascade enrichment
-├── index.js                     # Main scraper script
+├── index.js                     # Phase 1: Fetch script
+├── enrich.js                    # Phase 2: Enrichment script
 ├── package.json                 # Dependencies and scripts
-├── .env.example                 # Environment variables template
+├── .env.example                 # Environment template
 ├── .gitignore                  # Git ignore rules
+├── .stargazers-cache.json      # Cached data (auto-generated)
 └── README.md                   # This file
 ```
 
-## Advanced Configuration
+## Advanced Tips
 
-### Disable Specific Enrichment Levels
+### Automating Fetch Only
 
-You can disable enrichment levels by not providing the API keys:
+For CI/CD or scheduled jobs where you only want data collection:
 
-- **No enrichment**: Don't add any optional API keys
-- **Only pattern matching + AI**: Add only `OPENAI_API_KEY`
-- **Only pattern matching + LinkedIn**: Add only `GOOGLE_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID`
-- **All levels**: Add all API keys
-
-### Change AI Model
-
-Edit `src/ai-service.js` line 29 to use a different OpenAI model:
-
-```javascript
-model: 'gpt-4o-mini', // Change to 'gpt-4' for better accuracy (higher cost)
+```bash
+# This runs fetch without any prompts
+npm start
 ```
+
+No prompts, no questions - just fetches and exports to sheets.
+
+### Re-running Enrichment
+
+You can re-run enrichment multiple times on the same cached data:
+
+```bash
+npm run enrich  # First time
+# ... make changes to enrichment logic ...
+npm run enrich  # Run again without re-fetching GitHub
+```
+
+### Checking Cache
+
+The cache file `.stargazers-cache.json` contains:
+```json
+{
+  "fetchedAt": "2025-10-26T...",
+  "repository": "datapizza-labs/datapizza-ai",
+  "count": 500,
+  "stargazers": [...]
+}
+```
+
+You can inspect it to see what data was fetched.
+
+## Why Two Phases?
+
+1. **Try Before You Buy**: See all free GitHub data before spending on AI
+2. **Cost Control**: Many users already have LinkedIn in profiles (30-50%)!
+3. **Flexibility**: Fetch once, experiment with enrichment multiple times
+4. **Performance**: Re-enrichment doesn't require re-fetching from GitHub
+5. **Transparency**: Clear separation between free and paid operations
 
 ## License
 

@@ -12,6 +12,7 @@ export class EnrichmentService {
       level1Success: 0, // Pattern matching from existing data
       level2Success: 0, // AI analysis
       level3Success: 0, // LinkedIn search
+      linkedinFromGitHub: 0, // LinkedIn URLs found directly in GitHub profile
       failed: 0,
     };
   }
@@ -75,7 +76,18 @@ export class EnrichmentService {
     }
 
     // LEVEL 3: LinkedIn Search
-    if (this.searchService) {
+    // Check if user already has LinkedIn URL in GitHub profile (HUGE optimization!)
+    if (user.linkedinUrl) {
+      console.log('  ✓ [Level 3] LinkedIn URL found in GitHub profile!');
+      enrichedData.linkedinProfiles = [{
+        url: user.linkedinUrl,
+        title: 'From GitHub Profile',
+        snippet: '',
+        extractedInfo: { role: null, company: null }
+      }];
+      this.stats.linkedinFromGitHub++;
+      console.log('  ⏭️  [Level 3] Skipping search (URL already available)');
+    } else if (this.searchService) {
       console.log('  [Level 3] Searching LinkedIn...');
       try {
         const linkedinProfiles = await this.searchService.searchLinkedInProfiles(user);
@@ -332,6 +344,7 @@ export class EnrichmentService {
     console.log(`Level 1 success (pattern matching): ${this.stats.level1Success}`);
     console.log(`Level 2 success (AI analysis): ${this.stats.level2Success}`);
     console.log(`Level 3 success (LinkedIn search): ${this.stats.level3Success}`);
+    console.log(`LinkedIn URLs from GitHub profile: ${this.stats.linkedinFromGitHub} ⭐️`);
     console.log(`Failed to enrich: ${this.stats.failed}`);
 
     if (this.searchService) {
@@ -341,6 +354,19 @@ export class EnrichmentService {
       console.log(`Free queries remaining: ${searchStats.freeQueriesRemaining}`);
       if (!searchStats.inFreeTier) {
         console.log(`Estimated cost: $${searchStats.estimatedCost}`);
+      }
+
+      // Show savings from GitHub profile LinkedIn URLs
+      if (this.stats.linkedinFromGitHub > 0) {
+        const savedCost = this.stats.linkedinFromGitHub > 100
+          ? ((this.stats.linkedinFromGitHub - 100) / 1000 * 5).toFixed(2)
+          : 0;
+        console.log(`\n💰 COST SAVINGS`);
+        console.log(`LinkedIn URLs found in GitHub: ${this.stats.linkedinFromGitHub}`);
+        console.log(`Google Search queries saved: ${this.stats.linkedinFromGitHub}`);
+        if (savedCost > 0) {
+          console.log(`Estimated cost saved: $${savedCost}`);
+        }
       }
     }
 

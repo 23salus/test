@@ -75,25 +75,29 @@ export class SheetsService {
         'Location',
         'Bio',
         'Blog/Website',
-        'Twitter',
+        'Twitter Username',
         'Followers',
         'Following',
         'Public Repos',
         'Profile URL',
         'Avatar URL',
         'Account Created',
+        // Social accounts from GitHub profile sidebar
+        'LinkedIn URL (GitHub)',
+        'Twitter URL (GitHub)',
+        'Other Social (GitHub)',
         // Enriched data columns
         'Role',
         'Seniority',
         'Company (Enriched)',
-        'LinkedIn Profiles (All)',
+        'LinkedIn Profiles (Search)',
         'Data Source',
         'Confidence',
       ];
 
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
-        range: `${sheetName}!A1:T1`,
+        range: `${sheetName}!A1:W1`,
         valueInputOption: 'RAW',
         resource: {
           values: [headers],
@@ -148,6 +152,20 @@ export class SheetsService {
   }
 
   /**
+   * Format other social accounts array as a string for Google Sheets
+   * @param {Array} socials - Array of social account URLs
+   * @returns {string} Formatted string
+   */
+  formatOtherSocial(socials) {
+    if (!socials || socials.length === 0) {
+      return '';
+    }
+
+    // Return all URLs separated by newlines
+    return socials.join('\n');
+  }
+
+  /**
    * Get the sheet ID by name
    * @param {string} sheetName - Name of the sheet
    * @returns {Promise<number>} Sheet ID
@@ -189,6 +207,10 @@ export class SheetsService {
         user.profileUrl,
         user.avatarUrl,
         user.createdAt,
+        // Social accounts from GitHub profile
+        user.linkedinUrl || '',
+        user.twitterUrl || '',
+        this.formatOtherSocial(user.otherSocial),
         // Enriched data
         user.role || '',
         user.seniority || '',
@@ -207,7 +229,7 @@ export class SheetsService {
 
         await this.sheets.spreadsheets.values.update({
           spreadsheetId: this.spreadsheetId,
-          range: `${sheetName}!A${startRow}:T${endRow}`,
+          range: `${sheetName}!A${startRow}:W${endRow}`,
           valueInputOption: 'RAW',
           resource: {
             values: batch,

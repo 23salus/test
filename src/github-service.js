@@ -72,6 +72,9 @@ export class GitHubService {
 
       const user = response.data;
 
+      // Extract social accounts from the profile
+      const socialAccounts = this.extractSocialAccounts(user);
+
       return {
         username: user.login,
         name: user.name || '',
@@ -87,6 +90,12 @@ export class GitHubService {
         profileUrl: user.html_url,
         avatarUrl: user.avatar_url,
         createdAt: user.created_at,
+        // Social accounts from sidebar
+        socialAccounts: socialAccounts,
+        linkedinUrl: socialAccounts.linkedin || null,
+        twitterUrl: socialAccounts.twitter || null,
+        mastodonUrl: socialAccounts.mastodon || null,
+        otherSocial: socialAccounts.other || [],
       };
     } catch (error) {
       console.error(`Error fetching details for user ${username}:`, error.message);
@@ -106,8 +115,59 @@ export class GitHubService {
         profileUrl: `https://github.com/${username}`,
         avatarUrl: '',
         createdAt: '',
+        socialAccounts: {},
+        linkedinUrl: null,
+        twitterUrl: null,
+        mastodonUrl: null,
+        otherSocial: [],
       };
     }
+  }
+
+  /**
+   * Extract social accounts from user profile
+   * Checks both the social_accounts array and the blog field
+   * @param {Object} user - User object from GitHub API
+   * @returns {Object} Organized social accounts
+   */
+  extractSocialAccounts(user) {
+    const accounts = {
+      linkedin: null,
+      twitter: null,
+      mastodon: null,
+      other: [],
+    };
+
+    // Check social_accounts array (from sidebar)
+    if (user.social_accounts && Array.isArray(user.social_accounts)) {
+      for (const account of user.social_accounts) {
+        const url = account.url || account.provider;
+
+        if (url && url.includes('linkedin.com')) {
+          accounts.linkedin = url;
+        } else if (url && (url.includes('twitter.com') || url.includes('x.com'))) {
+          accounts.twitter = url;
+        } else if (url && url.includes('mastodon')) {
+          accounts.mastodon = url;
+        } else if (url) {
+          accounts.other.push(url);
+        }
+      }
+    }
+
+    // Also check the blog field (many users put LinkedIn here)
+    if (user.blog) {
+      const blog = user.blog.toLowerCase();
+      if (blog.includes('linkedin.com') && !accounts.linkedin) {
+        accounts.linkedin = user.blog;
+      } else if ((blog.includes('twitter.com') || blog.includes('x.com')) && !accounts.twitter) {
+        accounts.twitter = user.blog;
+      } else if (blog.includes('mastodon') && !accounts.mastodon) {
+        accounts.mastodon = user.blog;
+      }
+    }
+
+    return accounts;
   }
 
   /**

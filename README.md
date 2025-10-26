@@ -176,20 +176,71 @@ const REPO_URL = 'https://github.com/your-username/your-repo';
 
 ## Usage
 
-Run the scraper:
+### Interactive Mode (Recommended)
+
+Run the scraper and choose whether to enrich data:
 
 ```bash
 npm start
 ```
 
+After fetching GitHub data, you'll see:
+
+```
+============================================================
+ENRICHMENT OPTIONS
+============================================================
+The enrichment process will add:
+  • Role (e.g., "Software Engineer", "Product Manager")
+  • Seniority (e.g., "Senior", "Staff", "Principal")
+  • Company (enriched from multiple sources)
+  • LinkedIn profiles (if not already in GitHub profile)
+
+Available enrichment levels:
+  ✓ Level 1: Pattern matching (FREE)
+  ✓ Level 2: AI analysis via OpenAI (~$0.01-0.02 per user)
+  ✓ Level 3: LinkedIn search (100 free/day, then $5/1000)
+
+Estimated time: ~4 minutes for 450 users
+Estimated cost: ~$7.50
+============================================================
+
+Do you want to run the enrichment process? (y/n):
+```
+
+**Type `y`** to run enrichment, or **`n`** to skip and export only GitHub data.
+
+### Quick Commands
+
+**Skip enrichment (GitHub data only):**
+```bash
+npm run start:no-enrich
+```
+Fast, free, no questions asked. Perfect for:
+- Quick previews of data
+- Testing the scraper
+- When you only need basic GitHub info
+
+**Auto-enrich (no prompt):**
+```bash
+npm run start:enrich
+```
+Runs enrichment automatically without asking. Perfect for:
+- Automation/CI pipelines
+- When you've already decided to enrich
+- Batch processing multiple repos
+
 ### What Happens During Execution
 
-1. **GitHub Scraping**: Fetches all stargazers and their basic info
-2. **Enrichment Phase** (if API keys configured):
+1. **GitHub Scraping**: Fetches all stargazers and their basic info (including social accounts from profiles!)
+2. **Enrichment Choice** (if API keys configured):
+   - Interactive prompt shows estimated time and cost
+   - Choose to run enrichment or skip
+3. **Enrichment Phase** (if enabled):
    - Level 1: Instant pattern matching
    - Level 2: AI analysis (shows progress per user)
    - Level 3: LinkedIn search (asks for confirmation after 100 free queries)
-3. **Export**: Writes all data to Google Sheets
+4. **Export**: Writes all data to Google Sheets
 
 ### Example Output
 

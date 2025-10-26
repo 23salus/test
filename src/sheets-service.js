@@ -153,7 +153,7 @@ export class SheetsService {
 
   /**
    * Format other social accounts array as a string for Google Sheets
-   * @param {Array} socials - Array of social account URLs
+   * @param {Array} socials - Array of social account objects or URLs
    * @returns {string} Formatted string
    */
   formatOtherSocial(socials) {
@@ -161,8 +161,14 @@ export class SheetsService {
       return '';
     }
 
-    // Return all URLs separated by newlines
-    return socials.join('\n');
+    // Handle both old format (strings) and new format (objects with provider/url)
+    return socials.map(social => {
+      if (typeof social === 'string') {
+        return social;
+      }
+      // New format: {provider: 'youtube', url: 'https://...'}
+      return social.provider ? `${social.provider}: ${social.url}` : social.url;
+    }).join('\n');
   }
 
   /**

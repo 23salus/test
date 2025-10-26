@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "start:no-enrich": "node index.js --skip-enrichment",
-    "start:enrich": "node index.js --auto-enrich",
+    "fetch": "node index.js",
+    "enrich": "node enrich.js",
     "dev": "node --watch index.js"
   },
   "keywords": [

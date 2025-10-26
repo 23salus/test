@@ -66,14 +66,30 @@ export class GitHubService {
    */
   async fetchUserDetails(username) {
     try {
+      // Fetch basic user info
       const response = await this.octokit.users.getByUsername({
         username,
       });
 
       const user = response.data;
 
-      // Extract social accounts from the profile
-      const socialAccounts = this.extractSocialAccounts(user);
+      // Fetch social accounts from separate endpoint (critical for LinkedIn!)
+      let socialAccountsFromAPI = [];
+      try {
+        const socialResponse = await this.octokit.request('GET /users/{username}/social_accounts', {
+          username,
+          headers: {
+            'X-GitHub-Api-Version': '2022-11-28'
+          }
+        });
+        socialAccountsFromAPI = socialResponse.data || [];
+      } catch (socialError) {
+        // Social accounts endpoint might fail for some users - continue without it
+        console.log(`  ⚠️  Could not fetch social accounts for ${username}: ${socialError.message}`);
+      }
+
+      // Extract social accounts from API response AND blog field
+      const socialAccounts = this.extractSocialAccounts(user, socialAccountsFromAPI);
 
       return {
         username: user.login,
@@ -126,11 +142,12 @@ export class GitHubService {
 
   /**
    * Extract social accounts from user profile
-   * Checks both the social_accounts array and the blog field
+   * Checks the social_accounts API response AND the blog field
    * @param {Object} user - User object from GitHub API
+   * @param {Array} socialAccountsFromAPI - Social accounts from /users/{username}/social_accounts endpoint
    * @returns {Object} Organized social accounts
    */
-  extractSocialAccounts(user) {
+  extractSocialAccounts(user, socialAccountsFromAPI = []) {
     const accounts = {
       linkedin: null,
       twitter: null,
@@ -138,19 +155,26 @@ export class GitHubService {
       other: [],
     };
 
-    // Check social_accounts array (from sidebar)
-    if (user.social_accounts && Array.isArray(user.social_accounts)) {
-      for (const account of user.social_accounts) {
-        const url = account.url || account.provider;
+    // Check social_accounts from API endpoint (from sidebar)
+    if (socialAccountsFromAPI && Array.isArray(socialAccountsFromAPI)) {
+      for (const account of socialAccountsFromAPI) {
+        const url = account.url;
+        const provider = account.provider?.toLowerCase() || '';
 
-        if (url && url.includes('linkedin.com')) {
+        if (!url) continue;
+
+        if (url.includes('linkedin.com') || provider === 'linkedin') {
           accounts.linkedin = url;
-        } else if (url && (url.includes('twitter.com') || url.includes('x.com'))) {
+        } else if (url.includes('twitter.com') || url.includes('x.com') || provider === 'twitter') {
           accounts.twitter = url;
-        } else if (url && url.includes('mastodon')) {
+        } else if (url.includes('mastodon') || provider === 'mastodon') {
           accounts.mastodon = url;
-        } else if (url) {
-          accounts.other.push(url);
+        } else {
+          // Store any other social accounts (Facebook, Instagram, YouTube, etc.)
+          accounts.other.push({
+            provider: provider || 'unknown',
+            url: url
+          });
         }
       }
     }

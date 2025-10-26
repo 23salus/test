@@ -3,3 +3,4 @@ node_modules/
 credentials.json
 *.log
 .DS_Store
+.stargazers-cache.json
